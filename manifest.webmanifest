@@ -1,0 +1,9 @@
+{
+  "name": "Offline Face Attendance",
+  "short_name": "Face Attendance",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f3f6f5",
+  "theme_color": "#123b35",
+  "icons": []
+}

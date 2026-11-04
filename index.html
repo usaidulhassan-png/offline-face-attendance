@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#123b35">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Offline Face Attendance</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Noto Nastaliq Urdu",sans-serif;color:#172b28;background:#f3f6f5}
+*{box-sizing:border-box}body{margin:0}.wrap{max-width:760px;margin:auto;padding:16px}
+header{background:#123b35;color:#fff;padding:20px 16px;border-radius:0 0 18px 18px}
+h1{font-size:22px;margin:0 0 6px}header p{margin:0;color:#d6e8e3;font-size:13px}
+.card{background:white;border:1px solid #dce6e2;border-radius:16px;padding:15px;margin:14px 0;box-shadow:0 3px 12px #173c3210}
+h2{font-size:18px;margin:0 0 12px}.row{display:flex;gap:8px;flex-wrap:wrap}
+input,button{font:inherit;border-radius:10px;padding:12px;border:1px solid #cbd8d3}
+input{width:100%;background:#fff}button{background:#123b35;color:white;border:0;font-weight:650;cursor:pointer;flex:1;min-width:130px}
+button.secondary{background:#e7efec;color:#123b35}button.danger{background:#a83232}
+label{display:block;font-size:13px;margin:9px 0 5px;color:#46615a}
+video{width:100%;background:#101817;border-radius:12px;max-height:360px;object-fit:cover;transform:scaleX(-1)}
+#status{padding:11px;border-radius:10px;background:#edf4f1;margin-top:10px;font-size:14px}
+#status.good{background:#e1f5e8;color:#12602c}#status.bad{background:#fff0ed;color:#9b2c1c}
+.small{font-size:12px;color:#61746e;line-height:1.6}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:9px;border-bottom:1px solid #e6ece9;text-align:right}
+#result{font-size:19px;font-weight:750;margin-top:10px}
+.hidden{display:none!important}
+.pill{display:inline-block;background:#e7efec;border-radius:30px;padding:5px 10px;font-size:12px}
+</style>
+</head>
+<body>
+<header><div class="wrap" style="padding:0">
+<h1>آف لائن فیس ریکگنیشن حاضری</h1>
+<p>ابتدائی تجرباتی ورژن • ڈیٹا اسی براؤزر میں محفوظ ہوگا</p>
+</div></header>
+<main class="wrap">
+<div class="card">
+<h2>سسٹم کی تیاری</h2>
+<div class="row"><span class="pill" id="net">انٹرنیٹ چیک ہو رہا ہے</span><span class="pill" id="model">AI ماڈل لوڈ نہیں ہوا</span></div>
+<div id="status">پہلی مرتبہ انٹرنیٹ کے ساتھ کھولیں، کیمرے کی اجازت دیں اور ماڈلز لوڈ ہونے دیں۔ اس کے بعد یہ ایپ آف لائن چل سکتی ہے۔</div>
+<p class="small">نوٹ: کیمرے کے لیے ایپ HTTPS ویب ایڈریس پر کھلنی چاہیے۔ موبائل میں فائل کو براہِ راست کھولنے سے کیمرہ عموماً نہیں چلے گا۔</p>
+</div>
+
+<div class="card">
+<h2>کیمرہ</h2>
+<video id="video" autoplay muted playsinline></video>
+<div class="row" style="margin-top:10px">
+<button id="start">کیمرہ شروع کریں</button>
+<button class="secondary" id="stop">کیمرہ بند کریں</button>
+</div>
+</div>
+
+<div class="card">
+<h2>ملازم رجسٹر کریں</h2>
+<label>ملازم کا شناختی نمبر (Employee ID)</label>
+<input id="empId" placeholder="مثلاً 1001">
+<label>ملازم کا نام</label>
+<input id="empName" placeholder="مثلاً احمد علی">
+<div class="row" style="margin-top:10px"><button id="register">چہرہ رجسٹر کریں</button></div>
+<p class="small">رجسٹریشن کے وقت ملازم سیدھا کیمرے کی طرف دیکھے، چہرہ واضح ہو اور روشنی مناسب ہو۔ بہتر نتیجے کے لیے ہر شخص کی الگ رجسٹریشن کریں۔</p>
+</div>
+
+<div class="card">
+<h2>خودکار حاضری</h2>
+<div class="row">
+<button id="scan">شناخت اور حاضری شروع کریں</button>
+<button class="secondary" id="pause">روکیں</button>
+</div>
+<div id="result">ابھی کوئی ملازم شناخت نہیں ہوا</div>
+<p class="small">شناخت ہونے پر Employee ID، نام اور وقت دکھایا جائے گا۔ ایک ہی ملازم کی حاضری 5 منٹ کے اندر دوبارہ درج نہیں ہوگی۔</p>
+</div>
+
+<div class="card">
+<h2>آج کی حاضری</h2>
+<div class="row">
+<button class="secondary" id="export">CSV ایکسپورٹ کریں</button>
+<button class="danger" id="clearAttendance">حاضری ریکارڈ صاف کریں</button>
+</div>
+<div id="attendance"></div>
+</div>
+
+<div class="card">
+<h2>رجسٹرڈ ملازمین</h2>
+<div class="row"><button class="secondary" id="exportPeople">ملازمین کا بیک اپ</button><button class="danger" id="clearPeople">تمام ملازمین حذف کریں</button></div>
+<div id="people"></div>
+</div>
+
+<div class="card">
+<p class="small"><b>اہم حفاظتی وضاحت:</b> یہ صرف آزمائشی نظام ہے، بینک یا حاضری کے کمرشل بایومیٹرک ٹرمینل کے برابر نہیں۔ تصویر یا ویڈیو کے ذریعے دھوکا دینے کے خلاف قابلِ اعتماد Liveness Detection اس ورژن میں شامل نہیں۔ اسے حقیقی تنخواہ یا قانونی حاضری کے ریکارڈ کے لیے استعمال نہ کریں۔ ملازمین کی رضامندی لے کر ہی چہرے کے ڈیٹا کی رجسٹریشن کریں۔</p>
+</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const MODEL_URL='https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
+let stream=null, ready=false, scanning=false, lastLogged={};
+const DB_NAME='OfflineFaceAttendanceDB';
+let db;
+function say(msg,type=''){ $('status').textContent=msg; $('status').className=type; }
+function openDB(){return new Promise((resolve,reject)=>{
+ const req=indexedDB.open(DB_NAME,1);
+ req.onupgradeneeded=()=>{const d=req.result; if(!d.objectStoreNames.contains('people'))d.createObjectStore('people',{keyPath:'id'});if(!d.objectStoreNames.contains('attendance')){const s=d.createObjectStore('attendance',{keyPath:'key'});s.createIndex('date','date');}};
+ req.onsuccess=()=>{db=req.result;resolve(db)};req.onerror=()=>reject(req.error);
+});}
+function all(store){return new Promise((resolve,reject)=>{const r=db.transaction(store).objectStore(store).getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
+function put(store,obj){return new Promise((resolve,reject)=>{const r=db.transaction(store,'readwrite').objectStore(store).put(obj);r.onsuccess=()=>resolve();r.onerror=()=>reject(r.error)})}
+function clearStore(store){return new Promise((resolve,reject)=>{const r=db.transaction(store,'readwrite').objectStore(store).clear();r.onsuccess=()=>resolve();r.onerror=()=>reject(r.error)})}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+async function loadModels(){
+ try{
+ say('AI ماڈلز لوڈ ہو رہے ہیں۔ پہلی مرتبہ انٹرنیٹ درکار ہے…');
+ await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+ await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+ await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+ ready=true;$('model').textContent='AI ماڈلز تیار';say('AI ماڈلز تیار ہیں۔ اب کیمرہ شروع کریں۔','good');
+ }catch(e){console.error(e);say('ماڈل لوڈ نہیں ہوئے۔ انٹرنیٹ کنکشن چیک کرکے صفحہ دوبارہ کھولیں۔','bad')}
+}
+async function startCamera(){
+ try{
+ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false});
+ $('video').srcObject=stream; await $('video').play(); say('کیمرہ چل رہا ہے۔','good');
+ }catch(e){say('کیمرہ نہیں کھلا۔ Chrome میں Camera Permission اجازت دیں اور HTTPS ایڈریس استعمال کریں۔','bad')}
+}
+function stopCamera(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}$('video').srcObject=null;scanning=false}
+async function registerFace(){
+ if(!ready)return say('پہلے AI ماڈلز تیار ہونے دیں۔','bad');
+ if(!stream)return say('پہلے کیمرہ شروع کریں۔','bad');
+ const id=$('empId').value.trim(),name=$('empName').value.trim();
+ if(!id||!name)return say('Employee ID اور نام درج کریں۔','bad');
+ const det=await faceapi.detectSingleFace($('video'),new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+ if(!det)return say('چہرہ واضح نہیں ملا۔ کیمرے کے سامنے سیدھا دیکھیں۔','bad');
+ await put('people',{id,name,descriptor:Array.from(det.descriptor),created:new Date().toISOString()});
+ say(name+' کامیابی سے رجسٹر ہوگیا۔','good');renderPeople();
+}
+async function logAttendance(person){
+ const now=new Date(),day=now.toLocaleDateString('en-CA'),time=now.toLocaleTimeString();
+ const key=person.id+'_'+day;
+ const existing=(await all('attendance')).find(x=>x.key===key);
+ if(existing){$('result').textContent=person.name+' — آج پہلے ہی حاضری درج ہے';return}
+ await put('attendance',{key,id:person.id,name:person.name,date:day,time,stamp:now.toISOString(),status:'Present'});
+ $('result').textContent='شناخت: '+person.name+' | ID: '+person.id+' | PRESENT | '+time;
+ renderAttendance();
+}
+async function scanLoop(){
+ if(!scanning)return;
+ if(ready&&stream&&$('video').readyState>=2){
+  try{
+   const det=await faceapi.detectSingleFace($('video'),new faceapi.TinyFaceDetectorOptions({inputSize:320,scoreThreshold:.55})).withFaceLandmarks().withFaceDescriptor();
+   if(det){
+    const people=await all('people');let best=null,dist=1;
+    for(const p of people){const d=faceapi.euclideanDistance(det.descriptor,new Float32Array(p.descriptor));if(d<dist){dist=d;best=p}}
+    if(best&&dist<0.48){await logAttendance(best)}
+    else $('result').textContent='چہرہ ملا، مگر رجسٹرڈ ملازم سے میچ نہیں ہوا';
+   }else $('result').textContent='کیمرے کے سامنے چہرہ لائیں';
+  }catch(e){console.error(e)}
+ }
+ if(scanning)setTimeout(scanLoop,900);
+}
+async function renderPeople(){const p=await all('people');$('people').innerHTML=p.length?'<table><tr><th>ID</th><th>نام</th></tr>'+p.map(x=>'<tr><td>'+esc(x.id)+'</td><td>'+esc(x.name)+'</td></tr>').join('')+'</table>':'<p class="small">ابھی کوئی ملازم رجسٹر نہیں۔</p>'}
+async function renderAttendance(){const a=(await all('attendance')).sort((x,y)=>y.stamp.localeCompare(x.stamp));$('attendance').innerHTML=a.length?'<table><tr><th>ID</th><th>نام</th><th>تاریخ</th><th>وقت</th></tr>'+a.map(x=>'<tr><td>'+esc(x.id)+'</td><td>'+esc(x.name)+'</td><td>'+esc(x.date)+'</td><td>'+esc(x.time)+'</td></tr>').join('')+'</table>':'<p class="small">ابھی حاضری موجود نہیں۔</p>'}
+function download(name,content,type='text/csv'){const b=new Blob([content],{type});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+$('start').onclick=startCamera;$('stop').onclick=stopCamera;$('register').onclick=registerFace;
+$('scan').onclick=()=>{if(!ready||!stream)return say('پہلے AI ماڈل اور کیمرہ تیار کریں۔','bad');scanning=true;scanLoop()};
+$('pause').onclick=()=>{scanning=false;$('result').textContent='اسکین روک دیا گیا'};
+$('export').onclick=async()=>{const a=await all('attendance');const rows=[['Employee ID','Name','Date','Time','Status'],...a.map(x=>[x.id,x.name,x.date,x.time,x.status])];download('attendance.csv','\uFEFF'+rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n'))};
+$('exportPeople').onclick=async()=>{const p=await all('people');download('employees-face-backup.json',JSON.stringify(p))};
+$('clearAttendance').onclick=async()=>{if(confirm('تمام حاضری ریکارڈ حذف کریں؟')){await clearStore('attendance');renderAttendance()}};
+$('clearPeople').onclick=async()=>{if(confirm('تمام رجسٹرڈ ملازمین حذف کریں؟')){await clearStore('people');renderPeople()}};
+$('net').textContent=navigator.onLine?'انٹرنیٹ دستیاب':'آف لائن';
+window.addEventListener('online',()=>{$('net').textContent='انٹرنیٹ دستیاب'});window.addEventListener('offline',()=>{$('net').textContent='آف لائن'});
+(async()=>{await openDB();await renderPeople();await renderAttendance();if('serviceWorker'in navigator){try{await navigator.serviceWorker.register('./sw.js')}catch(e){console.warn(e)}}if(window.faceapi)loadModels();else say('Face Recognition Library لوڈ نہیں ہوئی۔ انٹرنیٹ کے ساتھ دوبارہ کھولیں۔','bad')})();
+</script>
+</body></html>
